@@ -1,9 +1,9 @@
-const API_BASE = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
+const API_BASE = import.meta.env.VITE_API_URL || "https://emotional-logical-chatbot-2zrz.onrender.com";
 
 export async function streamChat({ message, sessionId, onMeta, onToken, onDone, onError }) {
   let response
   try {
-    response = await fetch('/api/chat', {
+    response = await fetch(`${API_BASE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message, session_id: sessionId }),
@@ -34,7 +34,7 @@ export async function streamChat({ message, sessionId, onMeta, onToken, onDone, 
 }
 
 export async function sendFeedback(interactionId, rating, comment = null) {
-  await fetch('/api/feedback', {
+  await fetch(`${API_BASE}/api/feedback`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ interaction_id: interactionId, rating, comment }),
@@ -42,7 +42,7 @@ export async function sendFeedback(interactionId, rating, comment = null) {
 }
 
 export async function loadHistory(sessionId) {
-  const r = await fetch(`/api/history/${sessionId}`)
+  const r = await fetch(`${API_BASE}/api/history/${sessionId}`)
   const d = await r.json()
   return d.messages || []
 }
