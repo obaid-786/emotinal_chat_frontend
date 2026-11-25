@@ -46,3 +46,17 @@ export async function loadHistory(sessionId) {
   const d = await r.json()
   return d.messages || []
 }
+
+//  test if Render is awake
+
+export async function checkBackendHealth() {
+  try {
+    // cache: 'no-store' prevents the browser from faking a fast response
+    const res = await fetch(`${API_BASE}/api/health`, { cache: 'no-store' });
+    if (!res.ok) return false;
+    const data = await res.json();
+    return data.status === 'ok' || data.status === 'ready';
+  } catch (error) {
+    return false; // Server is likely still booting
+  }
+}

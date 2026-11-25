@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { streamChat, loadHistory } from '../api/client'
+import { streamChat, loadHistory, checkBackendHealth } from '../api/client' // <-- Import checkBackendHealth
 import Message from '../components/Message'
 
 export default function ChatPage() {
@@ -9,16 +9,43 @@ export default function ChatPage() {
   ])
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
+  const [isBackendReady, setIsBackendReady] = useState(false) // <-- New state
+  
   const sessionId = useRef(localStorage.getItem('chat_sid') || 'sess-' + Math.random().toString(36).slice(2, 10))
 
   useEffect(() => {
-    localStorage.setItem('chat_sid', sessionId.current)
-    loadHistory(sessionId.current).then(hist => {
-      if (hist.length) {
-        const restored = hist.map(m => ({ role: m.role === 'user' ? 'user' : 'bot', text: m.content }))
-        setMessages([{ role: 'bot', text: "Welcome back! Let's continue." }, ...restored])
+    let isMounted = true;
+    let timer;
+
+    async function waitForBackend() {
+      const isHealthy = await checkBackendHealth();
+      
+      if (!isMounted) return;
+
+      if (isHealthy) {
+        setIsBackendReady(true);
+        
+        // Now that backend is awake, load the history
+        loadHistory(sessionId.current).then(hist => {
+          if (hist.length) {
+            const restored = hist.map(m => ({ role: m.role === 'user' ? 'user' : 'bot', text: m.content }))
+            setMessages([{ role: 'bot', text: "Welcome back! Let's continue." }, ...restored])
+          }
+        }).catch(() => {})
+        
+      } else {
+        // If not ready, check again in 3 seconds
+        timer = setTimeout(waitForBackend, 3000);
       }
-    }).catch(() => {})
+    }
+
+    localStorage.setItem('chat_sid', sessionId.current)
+    waitForBackend();
+
+    return () => {
+      isMounted = false;
+      clearTimeout(timer);
+    };
   }, [])
 
   const send = async () => {
@@ -27,8 +54,6 @@ export default function ChatPage() {
     setInput(''); setBusy(true)
 
     setMessages(m => [...m, { role: 'user', text }])
-
-    // placeholder bot message that will fill with tokens
     setMessages(m => [...m, { role: 'bot', text: '', streaming: true }])
 
     const appendToken = (token) => {
@@ -68,6 +93,18 @@ export default function ChatPage() {
     })
   }
 
+  // --- LOADING SCREEN LOGIC ---
+  if (!isBackendReady) {
+    return (
+      <div className="chat-page" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
+        <h2>Please wait...</h2>
+        <p>Waking up the backend. Render cold starts can take up to 60 seconds.</p>
+        <div className="typing" style={{ marginTop: '20px' }}>● ● ●</div>
+      </div>
+    )
+  }
+
+  // --- NORMAL CHAT UI ---
   return (
     <div className="chat-page">
       <div className="chat-header">

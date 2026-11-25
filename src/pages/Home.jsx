@@ -1,5 +1,19 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom'
+import { checkBackendHealth } from '../api/client';
+
 export default function Home() {
+  useEffect(()=>{
+     // 1. Fire immediately when user lands on the page to trigger cold start 
+     checkBackendHealth();
+     //2. keep pinning after 10 min
+    const TEN_MINUTES = 10*60*1000; 
+    const interval = setInterval(() => {
+      checkBackendHealth();
+    }, TEN_MINUTES);
+    // 3. Clean up the interval when the user leaves the page
+    return () => clearInterval(interval);
+  },[])
   return (
     <>
       <nav className="nav">
